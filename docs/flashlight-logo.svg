@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" role="img" aria-label="Flashlight">
+<defs>
+<clipPath id="rrA"><rect width="400" height="400" rx="88"></rect></clipPath>
+<clipPath id="beamA"><path d="M81 281 L268 -126 L536 142 L129 329 Z"></path></clipPath>
+</defs>
+<rect width="400" height="400" rx="88" fill="#FFFFFF"></rect>
+<g clip-path="url(#rrA)" font-family="JetBrains Mono, ui-monospace, Menlo, monospace" font-size="24" font-weight="500" fill="#C4C4BE">
+<text x="24" y="78">x9Qa7zKp2LmW4vRt8sJd3NeQ</text>
+<text x="24" y="128">Hq5%Uv0#bT6yZc1&amp;Gw9oF2kR</text>
+<text x="24" y="178">3fPz8@Lk1Xr7Vn4$Ws0Ma6Ex</text>
+<text x="24" y="228">Yb2*Qd9!Kt5Jg8^Rv1Ne3HxZ</text>
+<text x="24" y="278">m7Zs0&amp;Pf4Lq9Wc2#Xt6Bk1Dv</text>
+<text x="24" y="328">Gv8$Nr3Hy5Jm0@Tq7Ks2Wf4P</text>
+<text x="24" y="378">c1Lx6!Vb9Pz3Rd8*Qn5Mh0Jt</text>
+</g>
+<g clip-path="url(#rrA)">
+<path d="M81 281 L268 -126 L536 142 L129 329 Z" fill="#FFE7A6"></path>
+<g clip-path="url(#beamA)" font-family="JetBrains Mono, ui-monospace, Menlo, monospace" font-size="24" font-weight="800" fill="#111111">
+<text x="24" y="78">event=first_open&amp;ts=17</text>
+<text x="24" y="128">app=com.example.app&amp;v=1</text>
+<text x="24" y="178">name=add_to_cart&amp;value=9</text>
+<text x="24" y="228">fb_mobile_purchase&amp;EUR</text>
+<text x="24" y="278">source=google_ads&amp;gbrai</text>
+<text x="24" y="328">session&amp;adid=abc123&amp;os</text>
+<text x="24" y="378">view_item&amp;screen=home&amp;id</text>
+</g>
+</g>
+<g transform="translate(70 340) rotate(45)">
+<rect x="-20" y="0" width="40" height="100" rx="10" fill="#111111"></rect>
+<path d="M-12 62 L12 62 M-12 74 L12 74 M-12 86 L12 86" stroke="#444444" stroke-width="5" stroke-linecap="round"></path>
+<rect x="-6" y="18" width="12" height="20" rx="4" fill="#FFA51F"></rect>
+<path d="M-34 -48 L34 -48 L24 0 L-24 0 Z" fill="#111111"></path>
+<rect x="-37" y="-57" width="74" height="12" rx="6" fill="#FFA51F"></rect>
+</g>
+<rect x="1" y="1" width="398" height="398" rx="87" fill="none" stroke="#E4E4E0" stroke-width="2"></rect>
+</svg>
