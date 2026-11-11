@@ -83,7 +83,7 @@ If the SDK has the config cached and doesn't download it again, add the domain b
 
 ## Setup video
 
-Watch how to install Flashlight, connect an iPhone and see Firebase, sGTM and Adjust hits live:
+[Watch how to install Flashlight](https://www.youtube.com/watch?v=xy4Q2-qzDaQ)
 
 <a href="https://www.youtube.com/watch?v=xy4Q2-qzDaQ"><img src="https://img.youtube.com/vi/xy4Q2-qzDaQ/maxresdefault.jpg" alt="Test Mobile App Tracking on iOS: See Firebase, sGTM and Adjust Hits Live" width="480"></a>
 
