@@ -81,6 +81,12 @@ Hits sent to that domain are shown as **sGTM** and GA4 payloads in them are deco
 
 If the SDK has the config cached and doesn't download it again, add the domain by hand under **sGTM domains**. Hover the button to see the remembered domains; **Forget domains** clears them.
 
+## Setup video
+
+Watch how to install Flashlight, connect an iPhone and see Firebase, sGTM and Adjust hits live:
+
+<a href="https://www.youtube.com/watch?v=xy4Q2-qzDaQ"><img src="https://img.youtube.com/vi/xy4Q2-qzDaQ/maxresdefault.jpg" alt="Test Mobile App Tracking on iOS: See Firebase, sGTM and Adjust Hits Live" width="480"></a>
+
 ## Installation
 
 ### macOS
