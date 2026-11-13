@@ -5,6 +5,11 @@ Versions follow [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-11-13
+
+- Removed the source of a hit (app SDK, webview, browsers) from the filters and the hit detail
+- SKAN hits of MMP SDKs (AppsFlyer, Singular, Branch, Kochava, Airbridge) get a Marketing Analytics Course CTA
+
 ## [1.0.0] - 2026-11-10
 
 First public release of **Flashlight**, a mobile app tracking debugger by measure-apps.com.

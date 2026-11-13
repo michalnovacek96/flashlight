@@ -21,7 +21,7 @@ Usage:
 
 from __future__ import annotations
 
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 
 import base64
 import gzip
@@ -889,7 +889,6 @@ def extract_hits(flow: http.HTTPFlow) -> list[dict]:
     sent = int(req.timestamp_start * 1000)
     ua = req.headers.get("user-agent", "")
     xrw = req.headers.get("x-requested-with", "")
-    source = _hit_source(ua, xrw)
     hits = [
         {
             "tool": tool,
@@ -902,7 +901,6 @@ def extract_hits(flow: http.HTTPFlow) -> list[dict]:
             "status": status,
             "flow_id": flow.id,
             "ua": _ua_token(ua),
-            "source": source,
             "xrw": xrw if BUNDLE_RE.match(xrw or "") else None,
             "params": _jsonable(params),
             "extra": _jsonable(extra),
@@ -984,6 +982,10 @@ def detect_issues(h: dict, ua: str, path: str) -> list[dict]:
     return issues
 
 
+# Adjust is left out: it sends SKAN data inside its attribution request, not on its own endpoint
+MMP_TOOLS = ("appsflyer", "singular", "branch", "kochava", "airbridge")
+
+
 def _marketing_issues(h: dict, path: str) -> list[dict]:
     """Attribution / ATT / SKAN moments (Marketing Analytics course topics)."""
     issues: list[dict] = []
@@ -1009,6 +1011,8 @@ def _marketing_issues(h: dict, path: str) -> list[dict]:
     # SKAdNetwork conversion value updates
     if tool == "skan":
         issues.append({"type": "skan", "detail": "Firebase SKAN request"})
+    elif tool in MMP_TOOLS and re.search(r"skad|skan", f"{h['host']}{path}", re.I):
+        issues.append({"type": "skan_mmp", "detail": f"{h['host']}{path.split('?')[0]}"})
 
     # deeplink open without tracker / UTM parameters
     if tool == "adjust" and _last_segment(path) == "sdk_click" and params.get("source") == "deeplink":
@@ -1713,13 +1717,12 @@ input[type=search], input[type=text] { background: var(--bg); border: 1px solid 
 .lg.broken { display: none; }
 .lg.broken + .sw { display: inline-block; }
 
-.apps, .sources { display: none; }
+.apps { display: none; }
 .adv { display: none; background: var(--bg); }
 .adv.open { display: block; }
 .adv .bar { background: var(--bg); padding-left: 24px; }
 .adv-toggle { margin-left: auto; border: 0; background: none; color: var(--accent-text); font: inherit; font-size: 13px; cursor: pointer; padding: 3px 4px; }
 .adv-toggle .dot { display: inline-block; min-width: 16px; padding: 0 5px; margin-left: 4px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 11px; line-height: 16px; text-align: center; }
-.sources.has { display: flex; }
 .apps.has { display: flex; }
 .chip .app-ic { width: 16px; height: 16px; border-radius: 4px; flex: none; }
 .chip .noicon { display: inline-block; border: 1px dashed var(--muted); }
@@ -1870,7 +1873,6 @@ table.kv { width: 100%; border-collapse: collapse; font-family: var(--mono); fon
 <div class="bar" id="chips"></div>
 <div class="adv" id="adv">
   <div class="bar apps" id="apps"></div>
-  <div class="bar sources" id="sources"></div>
 </div>
 <div class="ver">v{{VERSION}}</div>
 <main>
@@ -1888,8 +1890,7 @@ const store = {
 S.sel = new Set(store.get("atd.sel", []));
 S.q = store.get("atd.q", "");
 S.appSel = null;  // every page load starts on "All apps"
-S.srcSel = null;  // and on "All sources"
-S.advOpen = store.get("atd.adv", false);  // advanced filter (apps, sources) open or closed
+S.advOpen = store.get("atd.adv", false);  // advanced filter (apps) open or closed
 $("search").value = S.q;
 setQuery(S.q);
 
@@ -1905,10 +1906,7 @@ function fmtVal(v) {
 function endpoint(u) {
   try { const x = new URL(u); return x.host + x.pathname; } catch (e) { return u; }
 }
-const SOURCES = { app: "App SDK", webview: "In-app webview", safari: "Safari", chrome: "Chrome", firefox: "Firefox",
-  edge: "Edge", samsung: "Samsung Internet", unknown: "Unknown" };
-function sourceLabel(k) { return k && k.startsWith("inapp:") ? `${k.slice(6)} in-app browser` : (SOURCES[k] || SOURCES.unknown); }
-function inApp(h) { return (!S.appSel || h.app === S.appSel) && (!S.srcSel || (h.source || "unknown") === S.srcSel); }
+function inApp(h) { return !S.appSel || h.app === S.appSel; }
 function visible(h) {
   if (!inApp(h)) return false;
   if (S.sel.size ? !S.sel.has(h.tool) : h.tool === "other") return false;
@@ -1960,8 +1958,8 @@ function renderChips() {
     html += `<span class="chip ${cls}" style="--c:${t.color}" data-k="${esc(k)}">${logoImg(t)}<span class="sw" style="background:${t.color}"></span>${esc(t.label)} <span class="n">${counts[k] || 0}</span></span>`;
   }
   if (!keys.length) html += `<span class="hint">Waiting for tracking requests…</span>`;
-  // advanced filter (app + source) behind a toggle; the badge counts active filters while it is closed
-  const active = (S.appSel ? 1 : 0) + (S.srcSel ? 1 : 0);
+  // advanced filter (apps) behind a toggle; the badge counts active filters while it is closed
+  const active = S.appSel ? 1 : 0;
   html += `<button class="adv-toggle" type="button">${S.advOpen ? "Hide filters ▴" : "More filters ▾"}${active ? `<span class="dot">${active}</span>` : ""}</button>`;
   $("chips").innerHTML = html;
   $("adv").classList.toggle("open", !!S.advOpen);
@@ -2098,7 +2096,6 @@ function renderDetail() {
       ${h.sent !== h.time ? `<div>Sent: ${esc(new Date(h.sent).toLocaleString())}</div>` : ""}
       <div>${esc(h.method)} ${esc(h.url)}</div>
       <div>Status: ${esc(h.status ?? "—")}</div>
-      <div>Source: ${esc(sourceLabel(h.source))}</div>
     </div>
     <div class="actions">
       <button id="copy">Copy JSON</button>
@@ -2116,23 +2113,7 @@ function renderDetail() {
   };
 }
 
-function renderSources() {
-  // a row of sources (app SDK / webview / browsers), shown when the hits come from more than one
-  const counts = {};
-  for (const h of S.hits) {
-    if (h.tool === "other" || (S.appSel && h.app !== S.appSel)) continue;
-    const k = h.source || "unknown";
-    counts[k] = (counts[k] || 0) + 1;
-  }
-  const keys = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
-  if (S.srcSel && !keys.includes(S.srcSel)) keys.push(S.srcSel);
-  const total = Object.values(counts).reduce((a, b) => a + b, 0);
-  const html = `<span class="chip ${S.srcSel ? "off" : "on"}" style="--c:var(--accent)" data-s=""><span class="n">All sources</span> ${total}</span>` +
-    keys.map(k => `<span class="chip ${S.srcSel === k ? "on" : S.srcSel ? "off" : ""}" style="--c:var(--accent)" data-s="${esc(k)}">${esc(sourceLabel(k))} <span class="n">${counts[k] || 0}</span></span>`).join("");
-  if (html !== S.srcHtml) { S.srcHtml = html; $("sources").innerHTML = html; }
-  $("sources").classList.toggle("has", keys.length > 1 || !!S.srcSel);
-}
-function render() { S.cross = crossIssues(S.hits); renderApps(); renderSources(); renderChips(); renderList(); }
+function render() { S.cross = crossIssues(S.hits); renderApps(); renderChips(); renderList(); }
 
 // ---- Issue copy (edit here) ----
 // level: "critical" = data is lost or there is a legal risk (solid red !, use rarely)
@@ -2179,6 +2160,12 @@ const ISSUES = {
     level: "info",
     title: "SKAdNetwork is active",
     why: "Apple reports installs from iOS ad campaigns through SKAN postbacks. What the ad networks see depends on your conversion value schema.",
+    fix: "Check that the conversion value schema maps to your key events and fits the measurement windows.",
+  },
+  skan_mmp: {
+    level: "info",
+    title: "Your MMP measures SKAN",
+    why: "The MMP SDK manages SKAdNetwork conversion values in the app. What the ad networks see depends on the conversion value schema set in the MMP.",
     fix: "Check that the conversion value schema maps to your key events and fits the measurement windows.",
   },
   install: {
@@ -2239,6 +2226,8 @@ const CTAS = {
     "See what changes for MMPs and ad networks without ATT"],
   skan: ["marketing", "Apple only sends a conversion value above crowd anonymity tier 0, and later postbacks carry coarse values only.",
     "Build your schema in the SKAN conversion schema builder"],
+  skan_mmp: ["marketing", "Your app is using SKAN. With a weak conversion value schema, your iOS campaigns optimize on almost no data.",
+    "Learn how to set up SKAN right"],
   install: ["marketing", "first_open also fires on reinstalls. Real first installs are the ones with previous_first_open_count = 0.",
     "Get the BigQuery query for first-ever installs"],
   // tool based: hits of these tools without any issue (fact from the course lesson + link phrased like documentation)
@@ -2371,11 +2360,6 @@ $("apps").addEventListener("click", e => {
   const a = e.target.closest(".chip"); if (!a) return;
   S.appSel = a.dataset.b || null;
   renderApps();
-  render();
-});
-$("sources").addEventListener("click", e => {
-  const c = e.target.closest(".chip"); if (!c) return;
-  S.srcSel = c.dataset.s || null;
   render();
 });
 $("chips").addEventListener("click", e => {

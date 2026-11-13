@@ -13,7 +13,7 @@ See every tracking hit your app sends, grouped by tool, one row per event. GA4 /
 ## Features
 
 - **Live hits list** on http://127.0.0.1:8082, opens automatically with mitmweb. Pause, Clear, Copy JSON of a hit and a link to the same request in mitmweb
-- **App and source filter** – under More filters: the app's name and icon from the App Store / Google Play, and where each hit comes from (app SDK, in-app webview, Safari, Chrome, Instagram and other in-app browsers)
+- **App filter** – under More filters: the app's name and icon from the App Store / Google Play
 - **Tool detection** by domain, with a filter per tool: GA4 (Firebase), GA4 (web), Firebase, Crashlytics, Adjust, AppsFlyer, Meta, Branch, Singular, Kochava, Airbridge, TikTok, Snapchat, Google Ads, Mixpanel, Amplitude, Segment, Braze, CleverTap, OneSignal, AppMetrica, RevenueCat, Sentry, Datadog, Clarity
 - **One row per event** – batched requests (GA4, Meta, Amplitude, Mixpanel, ...) are split into single events
 - **Regex search** across event names, URLs, status codes and parameters
