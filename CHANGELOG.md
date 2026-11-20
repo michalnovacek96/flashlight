@@ -5,6 +5,11 @@ Versions follow [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-11-20
+
+- Proxy setup moved to the bottom right corner, next to the version
+- The steps to connect an iPhone show whenever there are no hits, even with a tool filter on (a remembered filter of a removed tool used to hide them)
+
 ## [1.0.2] - 2026-11-20
 
 - Proxy setup button in the header: the proxy IP address, port and certificate steps stay reachable after the iPhone connects

@@ -21,7 +21,7 @@ Usage:
 
 from __future__ import annotations
 
-__version__ = "1.0.2"
+__version__ = "1.0.3"
 
 import base64
 import gzip
@@ -1751,6 +1751,12 @@ button.icon { font-size: 18px; line-height: 1; padding: 3px 9px; }
 .dwrap .n { color: var(--muted); font-variant-numeric: tabular-nums; }
 .dwrap .pop { display: none; position: absolute; top: calc(100% + 6px); left: 0; z-index: 10; width: max-content; min-width: 240px; max-width: min(520px, 90vw); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.12); padding: 10px 12px; }
 .dwrap:hover .pop, .dwrap.open .pop { display: block; }
+.ver .dwrap { pointer-events: auto; }
+.ver button { border: 0; background: none; padding: 0; font: inherit; color: inherit; text-decoration: underline dotted; }
+.ver button:hover { background: none; color: var(--text); }
+.ver .dwrap:hover, .ver .dwrap.open { opacity: 1; }
+.ver .pop { top: auto; bottom: calc(100% + 6px); left: auto; right: 0; font-family: var(--sans); color: var(--text); }
+.ver .pop::before { top: auto; bottom: -8px; }
 .setup-pop .row { display: flex; align-items: center; gap: 10px; padding: 4px 0; font-size: 13px; }
 .setup-pop .row span { width: 52px; color: var(--muted); }
 .setup-pop .row code { font-family: var(--mono); font-size: 13px; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; user-select: all; }
@@ -1761,7 +1767,7 @@ button.icon { font-size: 18px; line-height: 1; padding: 3px 9px; }
 .pop li { padding: 3px 0; overflow-wrap: anywhere; }
 .domains input { width: 420px; max-width: 100%; }
 .hint { color: var(--muted); }
-.ver { position: fixed; right: 8px; bottom: 3px; z-index: 5; font-family: var(--mono); font-size: 10px; color: var(--muted); opacity: .55; pointer-events: none; }
+.ver { position: fixed; right: 8px; bottom: 3px; z-index: 5; font-family: var(--mono); font-size: 10px; color: color-mix(in srgb, var(--muted) 55%, transparent); pointer-events: none; }
 main { flex: 1; display: flex; min-height: 0; }
 #list { flex: 1 1 60%; overflow: auto; min-width: 0; }
 #detail { flex: 1 1 40%; overflow: auto; border-left: 1px solid var(--line); background: var(--panel); padding: 16px; min-width: 0; }
@@ -1855,10 +1861,6 @@ table.kv { width: 100%; border-collapse: collapse; font-family: var(--mono); fon
     <span id="hdrIcon" title="No device connected"></span>
     <h1>Flashlight<span class="by">Mobile app tracking debugger · by <a href="https://www.measure-apps.com" target="_blank" rel="noopener">measure-apps.com</a></span></h1>
   </div>
-  <span class="dwrap">
-    <button id="setupBtn">Proxy setup</button>
-    <div class="pop setup-pop" id="setupPop"></div>
-  </span>
   <input type="search" id="search" placeholder="Search">
   <span class="dwrap">
     <button id="domainsBtn">sGTM domains <span class="n" id="domainsCount"></span></button>
@@ -1882,7 +1884,7 @@ table.kv { width: 100%; border-collapse: collapse; font-family: var(--mono); fon
 <div class="adv" id="adv">
   <div class="bar apps" id="apps"></div>
 </div>
-<div class="ver">v{{VERSION}}</div>
+<div class="ver"><span class="dwrap"><button id="setupBtn">Proxy setup</button><div class="pop setup-pop" id="setupPop"></div></span> · v{{VERSION}}</div>
 <main>
   <div id="list"></div>
   <div id="detail"></div>
@@ -2059,7 +2061,7 @@ function renderList() {
   }
   const head = `<thead><tr><th class="t">Time</th><th class="tool">Tool</th><th class="url">URL</th><th class="st">Status</th><th class="ev">Event name</th></tr></thead>`;
   const html = rows.length ? `<table class="hits">${head}<tbody>${rows.join("")}</tbody></table>`
-    : connState() !== "hits" && !S.sel.size ? onboarding() : `<div class="empty">No hits match the filter.</div>`;
+    : connState() !== "hits" ? onboarding() : `<div class="empty">No hits match the filter.</div>`;
   // keep the DOM (and its animations) when nothing changed
   if (html !== S.listHtml) { S.listHtml = html; $("list").innerHTML = html; }
   $("count").textContent = `${n} hit${n === 1 ? "" : "s"}`;
@@ -2324,6 +2326,8 @@ async function poll() {
       const d = await r.json();
       if (!S.toolOrder.length) {
         for (const t of d.tools) { S.tools[t.key] = t; S.toolOrder.push(t.key); }
+        const known = [...S.sel].filter(k => S.tools[k]);
+        if (known.length !== S.sel.size) { S.sel = new Set(known); store.set("atd.sel", known); render(); }
       }
       S.mitmweb = d.mitmweb;
       const before = connState() + JSON.stringify(S.device && [S.device.ip, S.device.name, S.device.model, S.device.os, !!S.device.https_ok, (S.device.tls_fail_hosts || []).length, S.device.tls_fail_host]) + JSON.stringify(S.proxy);
