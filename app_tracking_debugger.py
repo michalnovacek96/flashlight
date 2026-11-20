@@ -1750,7 +1750,11 @@ button.icon { font-size: 18px; line-height: 1; padding: 3px 9px; }
 .dwrap { position: relative; display: inline-block; }
 .dwrap .n { color: var(--muted); font-variant-numeric: tabular-nums; }
 .dwrap .pop { display: none; position: absolute; top: calc(100% + 6px); left: 0; z-index: 10; width: max-content; min-width: 240px; max-width: min(520px, 90vw); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.12); padding: 10px 12px; }
-.dwrap:hover .pop { display: block; }
+.dwrap:hover .pop, .dwrap.open .pop { display: block; }
+.setup-pop .row { display: flex; align-items: center; gap: 10px; padding: 4px 0; font-size: 13px; }
+.setup-pop .row span { width: 52px; color: var(--muted); }
+.setup-pop .row code { font-family: var(--mono); font-size: 13px; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; user-select: all; }
+.setup-pop .hint { margin-top: 8px; font-size: 12px; line-height: 1.5; }
 .dwrap .pop::before { content: ""; position: absolute; top: -8px; left: 0; right: 0; height: 8px; }
 .pop .ttl { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-bottom: 6px; }
 .pop ul { margin: 0; padding: 0; list-style: none; font-family: var(--mono); font-size: 12px; }
@@ -1851,6 +1855,10 @@ table.kv { width: 100%; border-collapse: collapse; font-family: var(--mono); fon
     <span id="hdrIcon" title="No device connected"></span>
     <h1>Flashlight<span class="by">Mobile app tracking debugger · by <a href="https://www.measure-apps.com" target="_blank" rel="noopener">measure-apps.com</a></span></h1>
   </div>
+  <span class="dwrap">
+    <button id="setupBtn">Proxy setup</button>
+    <div class="pop setup-pop" id="setupPop"></div>
+  </span>
   <input type="search" id="search" placeholder="Search">
   <span class="dwrap">
     <button id="domainsBtn">sGTM domains <span class="n" id="domainsCount"></span></button>
@@ -2320,6 +2328,7 @@ async function poll() {
       S.mitmweb = d.mitmweb;
       const before = connState() + JSON.stringify(S.device && [S.device.ip, S.device.name, S.device.model, S.device.os, !!S.device.https_ok, (S.device.tls_fail_hosts || []).length, S.device.tls_fail_host]) + JSON.stringify(S.proxy);
       S.offline = false; S.device = d.device || null; S.proxy = d.proxy || {};
+      renderSetup();
       if (before !== connState() + JSON.stringify(S.device && [S.device.ip, S.device.name, S.device.model, S.device.os, !!S.device.https_ok, (S.device.tls_fail_hosts || []).length, S.device.tls_fail_host]) + JSON.stringify(S.proxy)) renderList();
       renderIcon();
       renderApps(d.apps || []);
@@ -2406,6 +2415,17 @@ async function saveDomains(list) {
   S.domains = d.domains; renderDomains();
   $("domainsInput").value = d.domains.join(", "); $("domainsNote").textContent = "";
 }
+function renderSetup() {
+  const ip = S.proxy.ip ? esc(S.proxy.ip) : "&lt;your computer's IP&gt;";
+  const html = `<div class="ttl">iPhone Wi-Fi proxy · Manual</div>
+    <div class="row"><span>Server</span><code>${ip}</code></div>
+    <div class="row"><span>Port</span><code>${esc(S.proxy.port || 8080)}</code></div>
+    <div class="hint">Same Wi-Fi as this computer. Certificate (once per iPhone): open <code>mitm.it</code> in Safari, install it and trust it in Settings → General → About → Certificate Trust Settings.</div>`;
+  if (html !== S.setupHtml) { S.setupHtml = html; $("setupPop").innerHTML = html; }
+}
+// click pins the popover open, a click anywhere else closes it
+$("setupBtn").onclick = e => { e.stopPropagation(); $("setupBtn").parentElement.classList.toggle("open"); };
+document.addEventListener("click", e => { if (!e.target.closest("#setupPop")) $("setupBtn").parentElement.classList.remove("open"); });
 $("domainsBtn").onclick = () => $("domains").classList.toggle("open");
 $("domainsClose").onclick = () => $("domains").classList.remove("open");
 $("domainsForget").onclick = async () => {
@@ -2422,6 +2442,7 @@ $("domainsInput").addEventListener("keydown", e => { if (e.key === "Enter") $("d
 render();
 renderDetail();
 renderDomains();
+renderSetup();
 poll();
 </script>
 </body>
