@@ -13,6 +13,7 @@ See every tracking hit your app sends, grouped by tool, one row per event. GA4 /
 ## Features
 
 - **Live hits list** on http://127.0.0.1:8082, opens automatically with mitmweb. Pause, Clear, Copy JSON of a hit and a link to the same request in mitmweb
+- **Proxy setup** button – the proxy IP address, port and certificate steps, any time you need to connect another iPhone
 - **App filter** – under More filters: the app's name and icon from the App Store / Google Play
 - **Tool detection** by domain, with a filter per tool: GA4 (Firebase), GA4 (web), Firebase, Crashlytics, Adjust, AppsFlyer, Meta, Branch, Singular, Kochava, Airbridge, TikTok, Snapchat, Google Ads, Mixpanel, Amplitude, Segment, Braze, CleverTap, OneSignal, AppMetrica, RevenueCat, Sentry, Datadog, Clarity
 - **One row per event** – batched requests (GA4, Meta, Amplitude, Mixpanel, ...) are split into single events
@@ -133,7 +134,7 @@ Run the install command again (macOS) or download the file again (Windows). The 
 
 ## Usage
 
-Run `mitmweb` in the terminal. Flashlight opens in your browser at http://127.0.0.1:8082 and shows the steps to connect your iPhone, with your computer's IP address already filled in. It also shows when the iPhone is connected and whether it trusts the certificate. Then use the app and the hits appear live.
+Run `mitmweb` in the terminal. Flashlight opens in your browser at http://127.0.0.1:8082 and shows the steps to connect your iPhone, with your computer's IP address already filled in. It also shows when the iPhone is connected and whether it trusts the certificate. Then use the app and the hits appear live. The IP address and port stay under **Proxy setup** in the header.
 
 <details>
 <summary>Manual setup without the Flashlight page</summary>

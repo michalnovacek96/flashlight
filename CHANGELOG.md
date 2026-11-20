@@ -5,6 +5,8 @@ Versions follow [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-11-20
+
 - Proxy setup button in the header: the proxy IP address, port and certificate steps stay reachable after the iPhone connects
 
 ## [1.0.1] - 2026-11-13
