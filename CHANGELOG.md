@@ -5,6 +5,8 @@ Versions follow [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 
 ## [Unreleased]
 
+## [1.0.5] - 2026-11-26
+
 - The Adjust is not linked to GA4 check (Firebase app_instance_id missing in Adjust) is no longer shown
 - Batched requests split into one hit each, recognised by their shape for any tool: Graph API batches (Meta SDK: mobile_sdk_gk, app_settings), JSON lines and envelopes (Sentry: session, client_report, event with the exception type). Meta's settings request is named app_settings
 - Apple Ads hits decoded: event attribution, the AdServices token as one value and Apple's answer (attribution true / false, campaign, ad group, keyword) in the hit detail, plus a course CTA that says what Apple answered
