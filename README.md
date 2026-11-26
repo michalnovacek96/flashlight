@@ -10,12 +10,71 @@ See every tracking hit your app sends, grouped by tool, one row per event. GA4 /
 
 ![Flashlight](docs/flashlight-1.0.0.png)
 
+## Your data stays on your Mac
+
+Flashlight is safe to use on apps that handle sensitive data, such as banking or health apps.
+
+- **Hits never leave your computer.** Every captured request is kept in memory only, on your Mac. Nothing is uploaded, logged to a server or shared with measure-apps.com, and there is no telemetry.
+- **The UI is local.** It listens on `127.0.0.1:8082` only, so no other device on your network can open it.
+- **Nothing is saved to disk** except the list of custom sGTM domains you add in the UI (`~/.mitmproxy/tracking_custom_domains.json`). Clear or quit, and the hits are gone.
+- **What does go out:** to show the app's name and icon, Flashlight looks up the app's bundle ID (for example `com.example.app`) at the App Store or Google Play. The page also loads its fonts and the tool logos from Google. No hit data is part of these requests.
+
+The proxy itself (mitmproxy) forwards your app's traffic to the servers the app was talking to anyway, it doesn't send it anywhere else.
+
+## Detected tools
+
+Flashlight assigns every request to a tool by its domain. A domain also covers all its subdomains (`adjust.com` matches `app.adjust.com`). Rules are checked from the top, the first match wins. Custom sGTM domains from the UI are checked first. Firebase traffic sent through your own endpoint (the path contains `app-measurement`) shows up as **sGTM**. Requests that match nothing show up under **Other**.
+
+| Tool | Domains (subdomains included) | Path |
+|---|---|---|
+| Firebase SKAN | `app-measurement.com`, `app-analytics-services.com`, `app-analytics-services-att.com` | `^/skan` |
+| GA4 (Firebase) | `app-measurement.com`, `app-analytics-services.com`, `app-analytics-services-att.com` | any |
+| GA4 (web) | `google-analytics.com`, `analytics.google.com` | `/g/collect` |
+| Firebase | `firebaseinstallations.googleapis.com`, `firebaseremoteconfig.googleapis.com`, `firebaselogging-pa.googleapis.com`, `firebasedynamiclinks.googleapis.com`, `fcmtoken.googleapis.com`, `firebase-settings.crashlytics.com` | any |
+| Crashlytics | `crashlyticsreports-pa.googleapis.com`, `crashlytics.com` | any |
+| Adjust | `adjust.com`, `adjust.net.in`, `adjust.world`, `adjust.io` | any |
+| AppsFlyer | `appsflyer.com`, `appsflyersdk.com` | any |
+| Meta | `graph.facebook.com`, `ep1.facebook.com`, `ep2.facebook.com`, `graph-video.facebook.com`, `graph.fb.gg`, `graph-video.fb.gg` | any |
+| Branch | `branch.io` | any |
+| Singular | `singular.net` | any |
+| Kochava | `kochava.com` | any |
+| Airbridge | `airbridge.io` | any |
+| TikTok | `business-api.tiktok.com`, `analytics.tiktok.com`<br>any `*.tiktok.com` with path `^/api/v\d+/app_sdk/` | any |
+| Snapchat | `tr.snapchat.com`, `tr-shadow.snapchat.com`<br>any `*.snapchat.com` with path `^/sdk/metrics` | any |
+| Google Ads | `googleadservices.com`, `googleads.g.doubleclick.net`, `app-ads-services.com` | any |
+| Apple Ads | `api-adservices.apple.com` | any |
+| Mixpanel | `mixpanel.com` | any |
+| Amplitude | `amplitude.com` | any |
+| Segment | `segment.io`, `segment.com` | any |
+| Braze | `braze.com`, `braze.eu`, `appboy.com` | any |
+| CleverTap | `clevertap-prod.com`, `wzrkt.com` | any |
+| OneSignal | `onesignal.com` | any |
+| AppMetrica | `appmetrica.yandex.net`, `appmetrica.yandex.com` | any |
+| RevenueCat | `revenuecat.com` | any |
+| Sentry | `sentry.io` | any |
+| Datadog | `datadoghq.com`, `datadoghq.eu` | any |
+| Clarity | `clarity.ms` | any |
+| UXCam | `uxcam.com` | any |
+| LaunchDarkly | `launchdarkly.com` | any |
+| DataDome | `datadome.co` | any |
+| OneTrust (CMP) | `onetrust.io`, `onetrust.com`, `cookielaw.org` | any |
+| Didomi (CMP) | `privacy-center.org`, `didomi.io` | any |
+| Usercentrics (CMP) | `usercentrics.eu`, `usercentrics.com` | any |
+| Cookiebot (CMP) | `cookiebot.com`, `cookiebot.eu` | any |
+| Sourcepoint (CMP) | `privacy-mgmt.com`, `sp-prod.net`, `sourcepoint.com` | any |
+| consentmanager (CMP) | `consentmanager.net`, `consentmanager.de` | any |
+| Google UMP (CMP) | `fundingchoicesmessages.google.com` | any |
+| TrustArc (CMP) | `trustarc.com`, `truste.com` | any |
+| Ketch (CMP) | `ketchcdn.com`, `ketch.com` | any |
+| Axeptio (CMP) | `axept.io` | any |
+| iubenda (CMP) | `iubenda.com` | any |
+
 ## Features
 
 - **Live hits list** on http://127.0.0.1:8082, opens automatically with mitmweb. Pause, Clear, Copy JSON of a hit and a link to the same request in mitmweb
 - **Proxy setup** button – the proxy IP address, port and certificate steps, any time you need to connect another iPhone
 - **App filter** – under More filters: the app's name and icon from the App Store / Google Play
-- **Tool detection** by domain, with a filter per tool: GA4 (Firebase), GA4 (web), Firebase, Crashlytics, Adjust, AppsFlyer, Meta, Branch, Singular, Kochava, Airbridge, TikTok, Snapchat, Google Ads, Mixpanel, Amplitude, Segment, Braze, CleverTap, OneSignal, AppMetrica, RevenueCat, Sentry, Datadog, Clarity
+- **Tool detection** by domain, with a filter per tool, see [Detected tools](#detected-tools)
 - **One row per event** – batched requests (GA4, Meta, Amplitude, Mixpanel, ...) are split into single events
 - **Regex search** across event names, URLs, status codes and parameters
 - **GA4 decoding** – Firebase short names translated (`_e` → `user_engagement`, `_et` → `engagement_time_msec`, ...), readable values (dates, durations, LTV in currency), ecommerce `items[]`, user properties, device & app info

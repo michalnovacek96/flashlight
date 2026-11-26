@@ -582,14 +582,21 @@ TOOLS = [
     ("crashlytics", "Crashlytics", "#c62828", ("crashlyticsreports-pa.googleapis.com", "crashlytics.com"), None),
     ("adjust", "Adjust", "#1e88e5", ("adjust.com", "adjust.net.in", "adjust.world", "adjust.io"), None),
     ("appsflyer", "AppsFlyer", "#2e7d32", ("appsflyer.com", "appsflyersdk.com"), None),
-    ("meta", "Meta", "#1877f2", ("graph.facebook.com",), None),
+    ("meta", "Meta", "#1877f2", (
+        "graph.facebook.com", "ep1.facebook.com", "ep2.facebook.com", "graph-video.facebook.com",
+        "graph.fb.gg", "graph-video.fb.gg",
+    ), None),
     ("branch", "Branch", "#0097c7", ("branch.io",), None),
     ("singular", "Singular", "#7b1fa2", ("singular.net",), None),
     ("kochava", "Kochava", "#546e7a", ("kochava.com",), None),
     ("airbridge", "Airbridge", "#3949ab", ("airbridge.io",), None),
     ("tiktok", "TikTok", "#ee1d52", ("business-api.tiktok.com", "analytics.tiktok.com"), None),
     ("snap", "Snapchat", "#b8a800", ("tr.snapchat.com", "tr-shadow.snapchat.com"), None),
-    ("googleads", "Google Ads", "#34a853", ("googleadservices.com", "googleads.g.doubleclick.net"), None),
+    # app-ads-services.com: Google Ads on-device measurement SDK (bundled with Firebase Analytics 11.14.0+)
+    ("googleads", "Google Ads", "#34a853", (
+        "googleadservices.com", "googleads.g.doubleclick.net", "app-ads-services.com",
+    ), None),
+    ("appleads", "Apple Ads", "#0071e3", ("api-adservices.apple.com",), None),
     ("mixpanel", "Mixpanel", "#7856ff", ("mixpanel.com",), None),
     ("amplitude", "Amplitude", "#1f5fd6", ("amplitude.com",), None),
     ("segment", "Segment", "#3c9c78", ("segment.io", "segment.com"), None),
@@ -601,6 +608,29 @@ TOOLS = [
     ("sentry", "Sentry", "#6c5fc7", ("sentry.io",), None),
     ("datadog", "Datadog", "#632ca6", ("datadoghq.com", "datadoghq.eu"), None),
     ("clarity", "Clarity", "#0078d4", ("clarity.ms",), None),
+    ("uxcam", "UXCam", "#f26b3a", ("uxcam.com",), None),
+    ("launchdarkly", "LaunchDarkly", "#405bff", ("launchdarkly.com",), None),
+    ("datadome", "DataDome", "#1c2b5a", ("datadome.co",), None),
+    # consent management platforms (CMP)
+    ("onetrust", "OneTrust", "#6cc04a", ("onetrust.io", "onetrust.com", "cookielaw.org"), None),
+    ("didomi", "Didomi", "#e74c3c", ("privacy-center.org", "didomi.io"), None),
+    ("usercentrics", "Usercentrics", "#0045a5", ("usercentrics.eu", "usercentrics.com"), None),
+    ("cookiebot", "Cookiebot", "#1032cf", ("cookiebot.com", "cookiebot.eu"), None),
+    ("sourcepoint", "Sourcepoint", "#00a3e0", ("privacy-mgmt.com", "sp-prod.net", "sourcepoint.com"), None),
+    ("consentmanager", "consentmanager", "#2b7bb9", ("consentmanager.net", "consentmanager.de"), None),
+    ("googleump", "Google UMP", "#4285f4", ("fundingchoicesmessages.google.com",), None),
+    ("trustarc", "TrustArc", "#1b5faa", ("trustarc.com", "truste.com"), None),
+    ("ketch", "Ketch", "#7a3cff", ("ketchcdn.com", "ketch.com"), None),
+    ("axeptio", "Axeptio", "#2a2a2a", ("axept.io",), None),
+    ("iubenda", "iubenda", "#1cc691", ("iubenda.com",), None),
+]
+
+# Hosts an SDK can switch at runtime: any host under the suffix, matched by the SDK's API path
+TOOL_PATH_RULES = [
+    # TikTok Business SDK: analytics.us.tiktok.com by default, its server config can move it to another *.tiktok.com
+    ("tiktok", ("tiktok.com",), r"^/api/v\d+/app_sdk/"),
+    # Snap SDKs report their own metrics here, next to the tr.snapchat.com events
+    ("snap", ("snapchat.com",), r"^/sdk/metrics"),
 ]
 SGTM = ("sgtm", "sGTM", "#0b8043")
 OTHER = ("other", "Other", "#8a8a8a")
@@ -636,6 +666,9 @@ def detect_tool(host: str, path: str) -> str:
     path = path.split("?")[0]
     for key, _, _, suffixes, path_re in TOOLS:
         if _host_match(host, suffixes) and (path_re is None or re.search(path_re, path)):
+            return key
+    for key, suffixes, path_re in TOOL_PATH_RULES:
+        if _host_match(host, suffixes) and re.search(path_re, path):
             return key
     # Firebase traffic routed through a custom endpoint (e.g. sGTM .../app-measurement/a)
     if re.search(r"app-measurement|app-analytics-services", host + path):
@@ -1398,6 +1431,11 @@ LOGO_DOMAINS = {
     "segment": "segment.com", "braze": "braze.com", "clevertap": "clevertap.com", "onesignal": "onesignal.com",
     "appmetrica": "appmetrica.yandex.com", "revenuecat": "revenuecat.com", "sentry": "sentry.io",
     "datadog": "datadoghq.com", "clarity": "clarity.microsoft.com", "sgtm": "tagmanager.google.com",
+    "uxcam": "uxcam.com", "appleads": "ads.apple.com", "launchdarkly": "launchdarkly.com", "datadome": "datadome.co",
+    "onetrust": "onetrust.com", "didomi": "didomi.io", "usercentrics": "usercentrics.com",
+    "cookiebot": "cookiebot.com", "sourcepoint": "sourcepoint.com", "consentmanager": "consentmanager.net",
+    "googleump": "developers.google.com", "trustarc": "trustarc.com", "ketch": "ketch.com",
+    "axeptio": "axeptio.eu", "iubenda": "iubenda.com",
 }
 
 
