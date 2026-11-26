@@ -5,6 +5,8 @@ Versions follow [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-11-26
+
 - Meta detection covers all Graph API hosts of the Meta SDK: ep1.facebook.com and ep2.facebook.com (newer iOS SDKs send app settings and /activities there), graph-video.facebook.com, and graph.fb.gg / graph-video.fb.gg for apps with Facebook Gaming login
 - TikTok: the TikTok Business SDK sends to analytics.us.tiktok.com (or another *.tiktok.com its server config picks), these hits used to fall under Other
 - Google Ads: the on-device measurement SDK (part of Firebase Analytics 11.14.0+) sends to app-ads-services.com
