@@ -71,7 +71,7 @@ Flashlight assigns every request to a tool by its domain. A domain also covers a
 
 ## Features
 
-- **Live hits list** on http://127.0.0.1:8082, opens automatically with mitmweb. Pause, Clear, Copy JSON of a hit and a link to the same request in mitmweb
+- **Live hits list** on http://127.0.0.1:8082, opens automatically with mitmweb. Pause, Clear and Copy JSON of a hit
 - **Proxy setup** button – the proxy IP address, port and certificate steps, any time you need to connect another iPhone
 - **App filter** – under More filters: the app's name and icon from the App Store / Google Play
 - **Tool detection** by domain, with a filter per tool, see [Detected tools](#detected-tools)
@@ -215,7 +215,7 @@ Run `mitmweb` in the terminal. Flashlight opens in your browser at http://127.0.
 
 When you're done, set the iPhone's proxy back to **Off**, otherwise it has no internet on that Wi-Fi.
 
-To see the raw request, click **Open in mitmweb** in the hit's detail. In mitmweb, tracking requests are marked; filter them with `~marked`.
+To see the raw request, open mitmweb (http://127.0.0.1:8081). Tracking requests are marked there; filter them with `~marked`.
 
 ## Limitations
 

@@ -836,7 +836,110 @@ def _extract_ga4_web(query: dict, body) -> list[tuple]:
     return [(p.get("en", "page_view"), p, {}, None) for p in ({**query, **line} for line in lines)]
 
 
+def _split_fields(params: dict) -> dict:
+    """Graph API fields=a,b,c -> one value "a, b, c" that wraps in the detail."""
+    f = params.get("fields")
+    if isinstance(f, str) and "," in f:
+        params = {**params, "fields": ", ".join(f.split(","))}
+    return params
+
+
+def _meta_name(path: str) -> str:
+    """Graph API path -> event name: <app id> = app_settings, <app id>/mobile_sdk_gk = mobile_sdk_gk, ..."""
+    segs = [s for s in path.split("?")[0].split("/") if s and not re.fullmatch(r"v\d+(\.\d+)?", s)]
+    if not segs:
+        return "batch"
+    return "app_settings" if segs[-1].isdigit() else segs[-1]
+
+
+def _extract_meta(path: str, query: dict, body) -> list[tuple] | None:
+    """Meta SDK: Graph API batch, or a GET of the app's settings (/<version>/<app id>?fields=...)."""
+    hits = _extract_graph_batch(body)
+    if hits:
+        return hits
+    if _meta_name(path) == "app_settings" and query:
+        return [("app_settings", _split_fields(dict(query)), {}, None)]
+    return None
+
+
+def _extract_graph_batch(body) -> list[tuple] | None:
+    """Graph API batch (one POST, several requests inside, each with a relative_url) -> one hit per request."""
+    batch = _maybe_json(body.get("batch")) if isinstance(body, dict) else None
+    if isinstance(batch, list) and batch and all(isinstance(b, dict) and "relative_url" in b for b in batch):
+        extra = {"request": {k: v for k, v in body.items() if k != "batch"}}
+        out = []
+        for b in batch:
+            rel_path, _, qs = str(b["relative_url"]).replace("\\/", "/").partition("?")
+            params = {k: _maybe_json(v) for k, v in urllib.parse.parse_qsl(qs, keep_blank_values=True)}
+            params = _split_fields({"method": b.get("method", "GET"), **params})
+            out.append((_meta_name(rel_path), params, extra if extra["request"] else {}, None))
+        return out
+    return None
+
+
+def _extract_lines(body) -> list[tuple] | None:
+    """Body made of JSON lines -> one hit per line (any tool), or per item of a Sentry-style envelope."""
+    if not isinstance(body, str) or "\n" not in body.strip():
+        return None
+    lines = [ln for ln in body.splitlines() if ln.strip()]
+    try:
+        objs = [json.loads(ln) for ln in lines]
+    except ValueError:
+        objs = None
+    # an envelope item header is a small object like {"type": "session", "length": 304}
+    item_keys = {"type", "length", "content_type", "filename", "attachment_type", "item_count", "platform"}
+    is_envelope = len(lines) > 2 and (objs is None or ("type" in objs[1] and set(objs[1]) <= item_keys))
+    if objs and all(isinstance(o, dict) for o in objs) and not is_envelope:
+        return [(_name_of(o) or "line", o, {}, None) for o in objs]
+    return _extract_envelope(body)
+
+
+def _extract_envelope(body: str) -> list[tuple] | None:
+    """Envelope (Sentry & co.): a header line, then item header + payload pairs -> one hit per item."""
+    data = body.encode("utf-8", "replace")
+
+    def line_at(pos: int) -> tuple[bytes, int]:
+        end = data.find(b"\n", pos)
+        return (data[pos:], len(data)) if end < 0 else (data[pos:end], end + 1)
+
+    try:
+        head, pos = line_at(0)
+        envelope = json.loads(head)
+        out = []
+        while pos < len(data):
+            item_line, pos = line_at(pos)
+            if not item_line.strip():
+                continue
+            item = json.loads(item_line)
+            n = item.get("length")
+            if isinstance(n, int) and data[pos + n:pos + n + 1] in (b"\n", b""):
+                payload, pos = data[pos:pos + n], pos + n + 1
+            else:
+                payload, pos = line_at(pos)
+            try:
+                params = json.loads(payload)
+            except ValueError:
+                params = {"body": _as_text(payload) or f"<binary {len(payload)} bytes>"}
+            name = item.get("type", "item")
+            if name == "event" and isinstance(params, dict):
+                exc = ((params.get("exception") or {}).get("values") or [{}])[-1]
+                name = f"event {exc['type']}" if exc.get("type") else name
+            elif name == "transaction" and isinstance(params, dict) and params.get("transaction"):
+                name = f"transaction {params['transaction']}"
+            out.append((name, params if isinstance(params, dict) else {"body": params}, {"envelope": envelope}, None))
+        return out or None
+    except (ValueError, AttributeError, TypeError):
+        return None
+
+
 def _extract_generic(tool: str, host: str, path: str, query: dict, body) -> list[tuple]:
+    # formats recognised by their shape, whatever the tool: Graph API batch, JSON lines / envelope
+    hits = _extract_meta(path, query, body) if tool == "meta" else _extract_graph_batch(body)
+    if not hits:
+        hits = _extract_lines(body)
+    if hits:
+        return hits
+
     # Mixpanel & co. send base64 / JSON in a "data" form field
     if isinstance(body, dict) and isinstance(body.get("data"), str):
         try:
@@ -891,6 +994,10 @@ def extract_hits(flow: http.HTTPFlow) -> list[dict]:
         if tool == "skan":
             extra = {"response": decode_skan_response(flow.response)} if flow.response else {}
             events = [("skan", decode(unpack_body(raw), SKAN_REQUEST), extra, None)]
+        elif tool == "appleads":
+            # the app posts its AdServices token as plain text, Apple answers whether the install came from Apple Ads
+            events = [("attribution", {"token": raw.decode("ascii", "replace").strip()} if raw else {},
+                       decode_appleads_response(flow.response), None)]
         elif tool == "ga4" and "/config/app" in path:
             body = unpack_body(flow.response.get_content(strict=False) or b"") if flow.response else b""
             cfg = decode(body, CONFIG) if body else {}
@@ -1109,6 +1216,19 @@ def _ga4_issues(h: dict, ua: str, path: str) -> list[dict]:
     if found:
         issues.append({"type": "pii", "detail": ", ".join(found[:3])})
     return issues
+
+
+def decode_appleads_response(resp) -> dict:
+    """Apple's answer to the AdServices token: {"attribution": false} or the campaign, ad group, keyword, ..."""
+    if resp is None:
+        return {}
+    body = resp.get_content(strict=False) or b""
+    try:
+        data = json.loads(body)
+    except ValueError:
+        txt = _as_text(body)
+        data = {"body": txt[:MAX_TEXT] if txt is not None else f"<binary {len(body)} bytes>"} if body else {}
+    return {"response": data} if data else {}
 
 
 def decode_skan_response(resp) -> dict:
@@ -2147,7 +2267,6 @@ function renderDetail() {
     </div>
     <div class="actions">
       <button id="copy">Copy JSON</button>
-      ${S.mitmweb ? `<a href="${esc(S.mitmweb)}#/flows/${esc(h.flow_id)}/request" target="_blank" rel="noopener">Open in mitmweb</a>` : ""}
     </div>
     ${issueCard(h)}
     <h3>Parameters</h3>${kvTable(h.params)}`;
@@ -2266,29 +2385,48 @@ const CTAS = {
   // issue based
   af_encrypted: ["afdocs", "AppsFlyer encrypts this request, so Flashlight can't read the event data. Test the events in the AppsFlyer UI instead.",
     "How to test in AppsFlyer"],
-  webview: ["webview", "The webview sends its own GA4 session next to the Firebase SDK, so one user counts twice and the funnel breaks where the webview starts.",
+  webview: ["webview", "This hit comes from a web page inside the app, not from the Firebase SDK. GA4 counts the same person as two users, so your funnel breaks where the webview opens.",
     "Get the JavaScript bridge spec, GTM tag template and test app"],
-  ga4_mmp_link: ["marketing", "Adjust needs the Firebase app_instance_id as a partner parameter, otherwise re-attributed users show up as direct traffic in GA4.",
+  ga4_mmp_link: ["marketing", "This Adjust hit doesn't carry the Firebase app_instance_id. Without it, GA4 shows re-attributed users as direct traffic instead of the campaign that brought them back.",
     "See how partner parameters connect Adjust with GA4"],
-  att: ["marketing", "No ATT consent means no IDFA (device ID). Don't switch the SDK off, the MMP moves to non-identifying measurement on its own.",
+  att: ["marketing", "This device didn't allow tracking (ATT), so the hit has no IDFA (device ID). Keep the SDK on, the MMP switches to measurement without the device ID on its own.",
     "See what changes for MMPs and ad networks without ATT"],
-  skan: ["marketing", "Apple only sends a conversion value above crowd anonymity tier 0, and later postbacks carry coarse values only.",
-    "Build your schema in the SKAN conversion schema builder"],
+  skan: ["marketing", "Your app is using SKAN. With a weak conversion value schema, your iOS campaigns optimize on almost no data.",
+    "Learn how to set up SKAN right"],
   skan_mmp: ["marketing", "Your app is using SKAN. With a weak conversion value schema, your iOS campaigns optimize on almost no data.",
     "Learn how to set up SKAN right"],
-  install: ["marketing", "first_open also fires on reinstalls. Real first installs are the ones with previous_first_open_count = 0.",
+  install: ["marketing", "This first_open also fires when someone reinstalls the app. Only the ones with previous_first_open_count = 0 are real first installs.",
     "Get the BigQuery query for first-ever installs"],
   // tool based: hits of these tools without any issue (fact from the course lesson + link phrased like documentation)
   "tool:adjust": ["marketing", "Adjust exports raw data for free, but Google Ads and Meta installs first arrive as organic and get their real source later in an install_update row.",
     "See the Adjust to BigQuery export guide"],
   "tool:appsflyer": ["marketing", "AppsFlyer charges for raw data export (Data Locker), while Adjust exports raw data to cloud storage for free.",
     "Compare MMP features and raw export workflows"],
-  "tool:meta": ["marketing", "The Meta SDK only measures Meta campaigns, every new network means another SDK and app release, and two networks can claim the same install.",
-    "See the 5 problems with ad network SDKs and when an MMP pays off"],
-  "tool:tiktok": ["marketing", "The TikTok SDK only measures TikTok campaigns, every new network means another SDK and app release, and two networks can claim the same install.",
-    "See the 5 problems with ad network SDKs and when an MMP pays off"],
-  "tool:snap": ["marketing", "The Snapchat SDK only measures Snapchat campaigns, every new network means another SDK and app release, and two networks can claim the same install.",
-    "See the 5 problems with ad network SDKs and when an MMP pays off"],
+  // a list of [fact, link text] pairs rotates: each hit picks one by its id, so the same hit always shows the same text
+  "tool:meta": ["marketing", [
+    ["This hit goes only to Meta, and Meta only knows its own ad clicks. If the user also clicked a TikTok ad, TikTok counts the same install too. So your data is duplicated across ad networks.",
+      "See the 5 problems with ad network SDKs"],
+    ["Every ad network needs its own SDK like this Meta one, so each new channel means a developer, a new app release and several weeks of waiting.",
+      "See how to connect new ad networks without a new app release"],
+  ]],
+  "tool:tiktok": ["marketing", [
+    ["This hit goes only to TikTok, and TikTok only knows its own ad clicks. If the user also clicked a Meta ad, Meta counts the same install too. So your data is duplicated across ad networks.",
+      "See the 5 problems with ad network SDKs"],
+    ["Every ad network needs its own SDK like this TikTok one, so each new channel means a developer, a new app release and several weeks of waiting.",
+      "See how to connect new ad networks without a new app release"],
+  ]],
+  "tool:snap": ["marketing", [
+    ["This hit goes only to Snapchat, and Snapchat only knows its own ad clicks. If the user also clicked a Meta ad, Meta counts the same install too. So your data is duplicated across ad networks.",
+      "See the 5 problems with ad network SDKs"],
+    ["Every ad network needs its own SDK like this Snapchat one, so each new channel means a developer, a new app release and several weeks of waiting.",
+      "See how to connect new ad networks without a new app release"],
+  ]],
+  // a function builds the fact from the hit itself (Apple's answer in the response)
+  "tool:appleads": ["marketing", h => {
+    const a = ((h.extra || {}).response || {}).attribution;
+    const answer = a === true ? ", and Apple says yes" : a === false ? ", and Apple says no" : "";
+    return `This hit asks Apple Ads if the install came from its campaign${answer}. An MMP asks Apple Ads and your other ad networks the same question, so every install gets one source.`;
+  }, "See how an MMP gets installs from Apple Ads and other networks"],
   "tool:googleads": ["marketing", "Android installs and deep link campaigns are measurable today, iOS install campaigns also need ATT, a SKAN schema and on-device measurement (Firebase SDK 11.14.0+).",
     "Check if you're ready for Google Ads app campaigns"],
 };
@@ -2308,7 +2446,9 @@ function ctaKey(h) {
 function issueCard(h) {
   const k = ctaKey(h);
   if (k) {
-    const [course, text, link] = CTAS[k];
+    let [course, text, link] = CTAS[k];
+    if (Array.isArray(text)) [text, link] = text[Math.abs(Number(h.id) || 0) % text.length];
+    if (typeof text === "function") text = text(h);
     const c = COURSES[course];
     const url = c.external ? c.url : `${c.url}?utm_source=tracking-debugger&utm_medium=app&utm_campaign=${k.startsWith("tool:") ? "tool-" + k.slice(5) : "issue-" + k}`;
     return `<div class="cta-box">${esc(text)} <a href="${esc(url)}" target="_blank" rel="noopener">${esc(link)}&nbsp;→</a></div>`;
@@ -2344,7 +2484,7 @@ function crossIssues(hits) {
   return out;
 }
 // checks that are switched off: detected, but not shown anywhere
-const HIDDEN_ISSUES = new Set(["debug", "deeplink", "mmp_revenue"]);
+const HIDDEN_ISSUES = new Set(["debug", "deeplink", "mmp_revenue", "ga4_mmp_link"]);
 function issuesOf(h) { return [...(h.issues || []), ...((S.cross || {})[h.id] || [])].filter(i => !HIDDEN_ISSUES.has(i.type)); }
 
 function issueInfo(type) { return ISSUES[type] || { title: type, why: "", fix: "", level: "warning" }; }
