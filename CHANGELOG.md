@@ -5,6 +5,10 @@ Versions follow [Semantic Versioning](https://semver.org): `MAJOR.MINOR.PATCH`.
 
 ## [Unreleased]
 
+## [1.0.6] - 2026-11-26
+
+- Course links use utm_source=flashlight (was tracking-debugger)
+
 ## [1.0.5] - 2026-11-26
 
 - The Adjust is not linked to GA4 check (Firebase app_instance_id missing in Adjust) is no longer shown

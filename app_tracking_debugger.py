@@ -21,7 +21,7 @@ Usage:
 
 from __future__ import annotations
 
-__version__ = "1.0.5"
+__version__ = "1.0.6"
 
 import base64
 import gzip
@@ -2244,7 +2244,7 @@ function kvTable(obj) {
 const EMPTY_DETAIL = `<div class="empty">Select a hit to see its parameters.</div>
   <div class="promo-card">
     <div class="pc-q">Do you want to skip trial and error in mobile app attribution?
-      <a href="https://www.measure-apps.com/courses/marketing-analytics?utm_source=tracking-debugger&amp;utm_medium=app&amp;utm_campaign=detail" target="_blank" rel="noopener">Explore the course →</a></div>
+      <a href="https://www.measure-apps.com/courses/marketing-analytics?utm_source=flashlight&amp;utm_medium=app&amp;utm_campaign=detail" target="_blank" rel="noopener">Explore the course →</a></div>
     <ul>
       <li><b>Dev spec handbook:</b> what to ask devs for, and what you handle yourself</li>
       <li><b>Live sandbox app:</b> test and debug tracking without touching production</li>
@@ -2450,7 +2450,7 @@ function issueCard(h) {
     if (Array.isArray(text)) [text, link] = text[Math.abs(Number(h.id) || 0) % text.length];
     if (typeof text === "function") text = text(h);
     const c = COURSES[course];
-    const url = c.external ? c.url : `${c.url}?utm_source=tracking-debugger&utm_medium=app&utm_campaign=${k.startsWith("tool:") ? "tool-" + k.slice(5) : "issue-" + k}`;
+    const url = c.external ? c.url : `${c.url}?utm_source=flashlight&utm_medium=app&utm_campaign=${k.startsWith("tool:") ? "tool-" + k.slice(5) : "issue-" + k}`;
     return `<div class="cta-box">${esc(text)} <a href="${esc(url)}" target="_blank" rel="noopener">${esc(link)}&nbsp;→</a></div>`;
   }
   const main = mainIssue(h);
